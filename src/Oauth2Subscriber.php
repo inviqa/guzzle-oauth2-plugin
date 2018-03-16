@@ -51,7 +51,7 @@ class Oauth2Subscriber implements SubscriberInterface
     public function onError(ErrorEvent $event)
     {
         $response = $event->getResponse();
-        if ($response && 401 == $response->getStatusCode()) {
+        if ($response && (401 == $response->getStatusCode() || 400 == $response->getStatusCode())) {
             $request = $event->getRequest();
             if ($request->getConfig()->get('auth') == 'oauth2' && !$request->getConfig()->get('retried')) {
                 if ($token = $this->acquireAccessToken()) {
