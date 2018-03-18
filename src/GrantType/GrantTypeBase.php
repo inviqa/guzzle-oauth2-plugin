@@ -5,6 +5,7 @@ namespace CommerceGuys\Guzzle\Oauth2\GrantType;
 use CommerceGuys\Guzzle\Oauth2\AccessToken;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Collection;
+use GuzzleHttp\Exception\ClientException;
 
 abstract class GrantTypeBase implements GrantTypeInterface
 {
@@ -86,7 +87,14 @@ abstract class GrantTypeBase implements GrantTypeInterface
             $requestOptions = array_merge_recursive($requestOptions, $additionalOptions);
         }
 
-        $response = $this->client->post($config['token_url'], $requestOptions);
+        try {
+            $response = $this->client->post($config['token_url'], $requestOptions);
+        } catch (ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 400)  {
+                throw new RefreshTokenExpired();
+            }
+        }
+
         $data = $response->json();
 
         return new AccessToken($data['access_token'], $data['token_type'], $data);

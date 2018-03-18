@@ -3,7 +3,9 @@
 namespace CommerceGuys\Guzzle\Oauth2;
 
 use CommerceGuys\Guzzle\Oauth2\GrantType\GrantTypeInterface;
+use CommerceGuys\Guzzle\Oauth2\GrantType\RefreshTokenExpired;
 use CommerceGuys\Guzzle\Oauth2\GrantType\RefreshTokenGrantTypeInterface;
+use CommerceGuys\Guzzle\Oauth2\GrantType\TooManyRefreshAttempts;
 use GuzzleHttp\Event\BeforeEvent;
 use GuzzleHttp\Event\ErrorEvent;
 use GuzzleHttp\Event\RequestEvents;
@@ -11,6 +13,7 @@ use GuzzleHttp\Event\SubscriberInterface;
 
 class Oauth2Subscriber implements SubscriberInterface
 {
+    const MAX_ACQUIRE_REFRESH_ATTEMPTS = 2;
 
     /** @var AccessToken|null */
     protected $accessToken;
@@ -21,6 +24,8 @@ class Oauth2Subscriber implements SubscriberInterface
     protected $grantType;
     /** @var RefreshTokenGrantTypeInterface */
     protected $refreshTokenGrantType;
+    /** @var int $refreshAttempts */
+    private $refreshAttempts = 0;
 
     /**
      * Create a new Oauth2 subscriber.
@@ -68,6 +73,7 @@ class Oauth2Subscriber implements SubscriberInterface
      * Get a new access token.
      *
      * @return AccessToken|null
+     * @throws TooManyRefreshAttempts
      */
     protected function acquireAccessToken()
     {
@@ -79,7 +85,16 @@ class Oauth2Subscriber implements SubscriberInterface
                 $this->refreshTokenGrantType->setRefreshToken($this->refreshToken->getToken());
             }
             if ($this->refreshTokenGrantType->hasRefreshToken()) {
-                $accessToken = $this->refreshTokenGrantType->getToken();
+                try {
+                    $accessToken = $this->refreshTokenGrantType->getToken();
+                } catch (RefreshTokenExpired $e) {
+                    if ($this->refreshAttempts > self::MAX_ACQUIRE_REFRESH_ATTEMPTS) {
+                        throw new TooManyRefreshAttempts();
+                    }
+                    $this->refreshAttempts++;
+                    $this->clearTokens();
+                    $this->acquireAccessToken();
+                }
             }
         }
 
@@ -171,5 +186,12 @@ class Oauth2Subscriber implements SubscriberInterface
             throw new \InvalidArgumentException('Invalid refresh token');
         }
         $this->refreshToken = $refreshToken;
+    }
+
+    private function clearTokens()
+    {
+        $this->refreshToken = null;
+        $this->accessToken = null;
+        $this->refreshTokenGrantType->setRefreshToken(null);
     }
 }
