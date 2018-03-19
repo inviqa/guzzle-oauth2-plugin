@@ -93,6 +93,7 @@ abstract class GrantTypeBase implements GrantTypeInterface
             if ($e->getResponse()->getStatusCode() === 400)  {
                 throw new RefreshTokenExpired();
             }
+            throw $e;
         }
 
         $data = $response->json();
