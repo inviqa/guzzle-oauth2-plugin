@@ -91,7 +91,7 @@ abstract class GrantTypeBase implements GrantTypeInterface
             $response = $this->client->post($config['token_url'], $requestOptions);
         } catch (ClientException $e) {
             if ($e->getResponse()->getStatusCode() === 400)  {
-                throw new RefreshTokenExpired();
+                throw new RefreshTokenExpired('The refresh token has expired.', $e->getRequest(), $e->getResponse(), $e);
             }
             throw $e;
         }

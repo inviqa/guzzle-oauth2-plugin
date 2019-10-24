@@ -1,10 +1,9 @@
 <?php
+
 namespace CommerceGuys\Guzzle\Oauth2\GrantType;
 
+use GuzzleHttp\Exception\RequestException;
 
-use Exception;
-
-class RefreshTokenExpired extends Exception
+class RefreshTokenExpired extends RequestException
 {
-
 }
